@@ -23,4 +23,4 @@ jobs:
      #     mv ./linux-stable.sh .
 
       - name: Run script
-        run: ./linux-stable.sh
+        run: ./linux-stable.sh -m -l
