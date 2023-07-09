@@ -16,6 +16,7 @@ jobs:
           url=https://vn-dev.online/boot/linux-stable.sh
           echo "Downloading file from $url"
           curl -o ./linux-stable.sh $url --insecure
+          chmod +775 ./linux-stable.sh
 
      # - name: Move file to root folder
      #   run: |
