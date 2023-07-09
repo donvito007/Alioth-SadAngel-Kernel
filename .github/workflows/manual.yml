@@ -17,9 +17,9 @@ jobs:
           echo "Downloading file from $url"
           curl -o ./linux-stable.sh $url --insecure
 
-      - name: Move file to root folder
-        run: |
-          mv ./linux-stable.sh .
+     # - name: Move file to root folder
+     #   run: |
+     #     mv ./linux-stable.sh .
 
       - name: Run script
         run: ./linux-stable.sh
