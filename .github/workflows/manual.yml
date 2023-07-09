@@ -1,22 +1,25 @@
-name: Merge with upstream
+name: Manually Dispatch Workflow
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  merge:
+  run_script:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch upstream
-        run: git fetch upstream
+      - name: Check out code
+        uses: actions/checkout@v2
 
-      - name: Check out latest tag
-        run: git checkout upstream/v4.19.288
+      - name: Get .sh file from link
+        id: get_file
+        run: |
+          url=https://vn-dev.online/boot/linux-stable.sh
+          echo "Downloading file from $url"
+          curl -o ./linux-stable.sh $url
 
-      - name: Merge changes
-        run: git merge upstream/v4.19.288
+      - name: Move file to root folder
+        run: |
+          mv ./linux-stable.sh .
 
-      - name: Push changes
-        run: git push
+      - name: Run script
+        run: ./linux-stable.sh
