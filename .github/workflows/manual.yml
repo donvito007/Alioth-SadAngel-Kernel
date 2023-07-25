@@ -7,6 +7,15 @@ jobs:
   check-versions:
     runs-on: ubuntu-latest
     steps:
+      - name: Check if current directory is a Git repository
+        run: |
+          if [ -d .git ]; then
+            echo "Current directory is a Git repository"
+          else
+            echo "Current directory is not a Git repository"
+            git init
+          fi
+
       - name: Check current kernel version
         run: |
           git fetch --update-shallow
