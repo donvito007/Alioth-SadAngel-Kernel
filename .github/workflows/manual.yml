@@ -1,26 +1,52 @@
-name: Manually Dispatch Workflow
+name: Merge Android Kernel with Latest Stable Linux
 
 on:
   workflow_dispatch:
 
 jobs:
-  run_script:
+  check-versions:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Get .sh file from link
-        id: get_file
+      - name: Check current kernel version
         run: |
-          url=https://vn-dev.online/boot/linux-stable.sh
-          echo "Downloading file from $url"
-          curl -o ./linux-stable.sh $url --insecure
-          chmod +775 ./linux-stable.sh
+          git fetch --update-shallow
+          echo "Current kernel version: $(git describe --tags)"
 
-     # - name: Move file to root folder
-     #   run: |
-     #     mv ./linux-stable.sh .
+      - name: Check latest stable Linux version
+        run: |
+          curl -s https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags | grep -oE 'v[0-9]+.[0-9]+.[0-9]+'
 
-      - name: Run script
-        run: ./linux-stable.sh -m -l
+  merge-kernel:
+    needs: check-versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if latest stable Linux version is newer
+        run: |
+          latest_stable_version=$(curl -s https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
+          current_version=$(git describe --tags)
+          if [[ $latest_stable_version > $current_version ]]; then
+            echo "Latest stable Linux version is newer"
+          else
+            echo "Latest stable Linux version is not newer"
+            exit 1
+          fi
+
+      - name: Merge latest stable Linux with current kernel
+        run: |
+          git fetch linux-stable
+          git merge linux-stable/v${latest_stable_version}
+
+      - name: Create new branch for merged kernel
+        run: |
+          git checkout -b merged-kernel
+
+      - name: Save information about the merge process
+        run: |
+          echo "Merged kernel version: $(git describe --tags)" > merge_info.txt
+          echo "Latest stable Linux version: $latest_stable_version" >> merge_info.txt
+
+      - name: Upload merge info
+        uses: actions/upload-artifact@v2
+        with:
+          name: merge_info
+          path: merge_info.txt
