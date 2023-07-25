@@ -31,14 +31,19 @@ jobs:
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
           echo "CURRENT_BRANCH=$CURRENT_BRANCH" >> $GITHUB_ENV
 
-      - name: Get latest version of stable Linux
+      - name: Get latest version of stable Linux tag
         run: |
-          LATEST_LINUX_VERSION=$(curl -LsSf https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
-          echo "LATEST_LINUX_VERSION=$LATEST_LINUX_VERSION" >> $GITHUB_ENV
+          LATEST_LINUX_TAG=$(curl -LsSf https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
+          echo "LATEST_LINUX_TAG=$LATEST_LINUX_TAG" >> $GITHUB_ENV
+
+      - name: Get commit hash for latest stable Linux tag
+        run: |
+          LATEST_LINUX_COMMIT=$(git rev-list -n 1 "$LATEST_LINUX_TAG")
+          echo "LATEST_LINUX_COMMIT=$LATEST_LINUX_COMMIT" >> $GITHUB_ENV
 
       - name: Compare versions and set IS_NEWER flag
         run: |
-          if [ "$CURRENT_BRANCH" != "$LATEST_LINUX_VERSION" ]; then
+          if [ "$CURRENT_BRANCH" != "$LATEST_LINUX_TAG" ]; then
             echo "IS_NEWER=true" >> $GITHUB_ENV
           else
             echo "IS_NEWER=false" >> $GITHUB_ENV
@@ -47,14 +52,14 @@ jobs:
       - name: Merge with the latest stable Linux
         if: env.IS_NEWER == 'true' || github.event.inputs.run-manual == 'true'
         run: |
-          git checkout -b updated_kernel "$LATEST_LINUX_VERSION"
+          git checkout -b updated_kernel "$LATEST_LINUX_COMMIT"
           git pull --rebase origin main
           git merge "$CURRENT_BRANCH"
 
       - name: Save information to a text file
         run: |
           echo "Current branch: $CURRENT_BRANCH" > update_log.txt
-          echo "Latest stable Linux version: $LATEST_LINUX_VERSION" >> update_log.txt
+          echo "Latest stable Linux tag: $LATEST_LINUX_TAG" >> update_log.txt
           echo "Is newer: $IS_NEWER" >> update_log.txt
 
       - name: Upload log file
