@@ -28,8 +28,8 @@ jobs:
 
       - name: Get current branch name
         run: |
-          CURRENT_VERSION=$(git rev-parse --abbrev-ref HEAD)
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "CURRENT_BRANCH=$CURRENT_BRANCH" >> $GITHUB_ENV
 
       - name: Get latest version of stable Linux
         run: |
@@ -38,7 +38,7 @@ jobs:
 
       - name: Compare versions and set IS_NEWER flag
         run: |
-          if [ "$CURRENT_VERSION" != "$LATEST_LINUX_VERSION" ]; then
+          if [ "$CURRENT_BRANCH" != "$LATEST_LINUX_VERSION" ]; then
             echo "IS_NEWER=true" >> $GITHUB_ENV
           else
             echo "IS_NEWER=false" >> $GITHUB_ENV
@@ -47,15 +47,13 @@ jobs:
       - name: Merge with the latest stable Linux
         if: env.IS_NEWER == 'true' || github.event.inputs.run-manual == 'true'
         run: |
-          git checkout -b updated_kernel
+          git checkout -b updated_kernel "$LATEST_LINUX_VERSION"
           git pull --rebase origin main
-          git remote add linux-stable https://github.com/torvalds/linux.git
-          git fetch linux-stable
-          git merge linux-stable/"$LATEST_LINUX_VERSION"
+          git merge "$CURRENT_BRANCH"
 
       - name: Save information to a text file
         run: |
-          echo "Current version: $CURRENT_VERSION" > update_log.txt
+          echo "Current branch: $CURRENT_BRANCH" > update_log.txt
           echo "Latest stable Linux version: $LATEST_LINUX_VERSION" >> update_log.txt
           echo "Is newer: $IS_NEWER" >> update_log.txt
 
