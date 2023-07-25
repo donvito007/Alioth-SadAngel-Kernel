@@ -23,7 +23,7 @@ jobs:
 
       - name: Check latest stable Linux version
         run: |
-          curl -s https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags | grep -oE 'v[0-9]+.[0-9]+.[0-9]+'
+          latest_stable_version=$(wget https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags -qO - | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
 
   merge-kernel:
     needs: check-versions
@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Check if latest stable Linux version is newer
         run: |
-          latest_stable_version=$(curl -s https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
+          latest_stable_version=$(wget https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags -qO - | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
           current_version=$(git describe --tags)
           if [[ $latest_stable_version > $current_version ]]; then
             echo "Latest stable Linux version is newer"
