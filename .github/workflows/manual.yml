@@ -7,7 +7,7 @@ on:
     inputs:
       run-manual:
         description: 'Run the workflow manually'
-        default: 'false'
+        default: 'true'
         required: false
 
 jobs:
@@ -26,20 +26,23 @@ jobs:
       - name: Get current version of Android kernel source
         run: |
           CURRENT_VERSION=$(git describe --abbrev=0 --tags)
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
       - name: Get latest version of stable Linux
         run: |
           LATEST_LINUX_VERSION=$(curl -LsSf https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
+          echo "LATEST_LINUX_VERSION=$LATEST_LINUX_VERSION" >> $GITHUB_ENV
 
-      - name: Compare versions
+      - name: Compare versions and set IS_NEWER flag
         run: |
-          IS_NEWER=false
           if [ "$CURRENT_VERSION" != "$LATEST_LINUX_VERSION" ]; then
-            IS_NEWER=true
+            echo "IS_NEWER=true" >> $GITHUB_ENV
+          else
+            echo "IS_NEWER=false" >> $GITHUB_ENV
           fi
 
       - name: Merge with the latest stable Linux
-        if: $IS_NEWER == true || github.event.inputs.run-manual == 'true'
+        if: env.IS_NEWER == 'true' || github.event.inputs.run-manual == 'true'
         run: |
           git checkout -b updated_kernel
           git pull --rebase origin main
@@ -54,7 +57,7 @@ jobs:
           echo "Is newer: $IS_NEWER" >> update_log.txt
 
       - name: Upload log file
-        if: $IS_NEWER == true || github.event.inputs.run-manual == 'true'
+        if: env.IS_NEWER == 'true' || github.event.inputs.run-manual == 'true'
         uses: actions/upload-artifact@v2
         with:
           name: update_log
