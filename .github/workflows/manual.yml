@@ -1,61 +1,61 @@
-name: Merge Android Kernel with Latest Stable Linux
+name: Update Kernel Source
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Schedule the workflow to run daily at midnight
+  workflow_dispatch:  # Manually dispatch trigger
+    inputs:
+      run-manual:
+        description: 'Run the workflow manually'
+        default: 'false'
+        required: false
 
 jobs:
-  check-versions:
+  update_kernel:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check if current directory is a Git repository
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
         run: |
-          if [ -d .git ]; then
-            echo "Current directory is a Git repository"
-          else
-            echo "Current directory is not a Git repository"
-            git init
+          git config --global user.name "donvito007"
+          git config --global user.email "frditc@gmail.com"
+
+      - name: Get current version of Android kernel source
+        run: |
+          CURRENT_VERSION=$(git describe --abbrev=0 --tags)
+
+      - name: Get latest version of stable Linux
+        run: |
+          LATEST_LINUX_VERSION=$(curl -LsSf https://www.kernel.org/releases.json | jq -r '.latest_stable.version')
+
+      - name: Compare versions
+        run: |
+          IS_NEWER=false
+          if [ "$CURRENT_VERSION" != "$LATEST_LINUX_VERSION" ]; then
+            IS_NEWER=true
           fi
 
-      - name: Check current kernel version
+      - name: Merge with the latest stable Linux
+        if: $IS_NEWER == true || github.event.inputs.run-manual == 'true'
         run: |
-          git fetch --update-shallow
-          echo "Current kernel version: $(git describe --tags)"
-
-      - name: Check latest stable Linux version
-        run: |
-          latest_stable_version=$(wget https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags -qO - | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
-
-  merge-kernel:
-    needs: check-versions
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if latest stable Linux version is newer
-        run: |
-          latest_stable_version=$(wget https://kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/refs/tags -qO - | grep -oE 'v[0-9]+.[0-9]+.[0-9]+')
-          current_version=$(git describe --tags)
-          if [[ $latest_stable_version > $current_version ]]; then
-            echo "Latest stable Linux version is newer"
-          else
-            echo "Latest stable Linux version is not newer"
-            exit 1
-          fi
-
-      - name: Merge latest stable Linux with current kernel
-        run: |
+          git checkout -b updated_kernel
+          git pull --rebase origin main
+          git remote add linux-stable https://github.com/torvalds/linux.git
           git fetch linux-stable
-          git merge linux-stable/v${latest_stable_version}
+          git merge linux-stable/"$LATEST_LINUX_VERSION"
 
-      - name: Create new branch for merged kernel
+      - name: Save information to a text file
         run: |
-          git checkout -b merged-kernel
+          echo "Current version: $CURRENT_VERSION" > update_log.txt
+          echo "Latest stable Linux version: $LATEST_LINUX_VERSION" >> update_log.txt
+          echo "Is newer: $IS_NEWER" >> update_log.txt
 
-      - name: Save information about the merge process
-        run: |
-          echo "Merged kernel version: $(git describe --tags)" > merge_info.txt
-          echo "Latest stable Linux version: $latest_stable_version" >> merge_info.txt
-
-      - name: Upload merge info
+      - name: Upload log file
+        if: $IS_NEWER == true || github.event.inputs.run-manual == 'true'
         uses: actions/upload-artifact@v2
         with:
-          name: merge_info
-          path: merge_info.txt
+          name: update_log
+          path: update_log.txt
